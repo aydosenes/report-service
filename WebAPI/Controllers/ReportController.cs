@@ -18,6 +18,19 @@ namespace WebAPI.Controllers
         {
             _mediator = mediator;
         }
+
+        [HttpGet("get-report")]
+        [ProducesResponseType(200, Type = typeof(IBaseResult))]
+        public async Task<IActionResult> GetReport()
+        {
+            var result = await _mediator.Send(new GetReportQuery() { GetContactListWithContactDetailListQuery = new GetContactListWithContactDetailListQuery() });
+            if (result.Success)
+                return Ok(result.Message);
+            return BadRequest(result.Message);
+
+        }
+
+
         [HttpGet("{id}")]
         [ProducesResponseType(200, Type = typeof(IDataResult<ReportDto>))]
         public async Task<IActionResult> GetReportById(string id)
@@ -43,6 +56,16 @@ namespace WebAPI.Controllers
         [HttpPost("add-report")]
         [ProducesResponseType(200, Type = typeof(BaseResult))]
         public async Task<IActionResult> AddReport([FromBody] AddReportCommand request)
+        {
+            var result = await _mediator.Send(request);
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result.Message);
+        }
+
+        [HttpPost("add-range-report")]
+        [ProducesResponseType(200, Type = typeof(BaseResult))]
+        public async Task<IActionResult> AddRangeReport([FromBody] AddRangeReportCommand request)
         {
             var result = await _mediator.Send(request);
             if (result.Success)

@@ -1,6 +1,8 @@
 ﻿using Application.Interfaces.Repository;
+using Application.Interfaces.Service;
 using Autofac;
 using Persistence.Repositories;
+using Persistence.Services;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -16,6 +18,8 @@ namespace Persistence.DependencyResolvers
                     .WithParameter("databaseName", "ReportDb")
                     .WithParameter("collectionName", "Reports")
                     .SingleInstance();
+
+            builder.RegisterType<RestService>().As<IRestService>().SingleInstance();
         }
     }
 }

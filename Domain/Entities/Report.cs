@@ -4,6 +4,7 @@ using MongoDB.Bson.Serialization.Attributes;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using static Domain.Common.Enums;
 
 namespace Domain.Entities
 {
@@ -12,7 +13,7 @@ namespace Domain.Entities
         public string Location { get; set; }
         public int ContactCount { get; set; }
         public int PhoneCount { get; set; }
-        public byte State { get; set; }
+        public State State { get; set; }
     }
 }
 
