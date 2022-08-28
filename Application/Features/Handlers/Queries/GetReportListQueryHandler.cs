@@ -6,6 +6,7 @@ using AutoMapper;
 using MediatR;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -27,7 +28,8 @@ namespace Application.Features.Handlers.Queries
             {
                 var get = await _reportRepository.GetListAsync();
                 var result = _mapper.Map<List<ReportDto>>(get);
-                return new SuccessDataResult<List<ReportDto>>(result);
+                var distinct = result.GroupBy(g=>g.Location).Select(s=>s.Last()).ToList();
+                return new SuccessDataResult<List<ReportDto>>(distinct);
             }
             catch (Exception ex)
             {
