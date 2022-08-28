@@ -50,7 +50,7 @@ namespace Application.Features.Handlers.Commands
                     worksheet.Cells[row, 2].Value = report.PhoneCount;
                     worksheet.Cells[row, 3].Value = report.State;
                 }
-                workbook.Save(Directory.GetCurrentDirectory() + "-report-results-" + Guid.NewGuid().ToString() + ".xlsx");
+                workbook.Save(Directory.GetCurrentDirectory() + "report-results-" + Guid.NewGuid().ToString() + ".xlsx");
 
                 return new SuccessDataResult<ICollection<ReportDto>>(distinct, Messages.Success_Added);
 
