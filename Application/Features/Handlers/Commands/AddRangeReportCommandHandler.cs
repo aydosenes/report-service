@@ -29,10 +29,9 @@ namespace Application.Features.Handlers.Commands
             try
             {
                 var mapped = _mapper.Map<ICollection<Report>>(request.Report);
-                await _reportRepository.AddRangeAsync(mapped);
-                var getlist = await _reportRepository.GetListAsync();
-                var result = _mapper.Map<List<ReportDto>>(getlist);
-                var distinct = result.GroupBy(g => g.Location).Select(s => s.Last()).ToList();
+                var result = await _reportRepository.AddRangeAsync(mapped);
+                var reports = _mapper.Map<List<ReportDto>>(result);
+                var distinct = reports.GroupBy(g => g.Location).Select(s => s.Last()).ToList();
 
                 SpreadsheetInfo.SetLicense("FREE-LIMITED-KEY");
                 ExcelFile workbook = new ExcelFile();
