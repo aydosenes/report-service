@@ -2,7 +2,6 @@
 using Application.Features.Request.Commands;
 using Application.Features.Request.Queries;
 using Application.Results;
-using MassTransit;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -16,11 +15,9 @@ namespace WebAPI.Controllers
     public class ReportController : ControllerBase
     {
         private readonly IMediator _mediator;
-        private readonly IRequestClient<AddRangeReportDto> _client;
-        public ReportController(IMediator mediator, IRequestClient<AddRangeReportDto> client)
+        public ReportController(IMediator mediator)
         {
             _mediator = mediator;
-            _client = client;
         }
 
         [HttpGet("get-report")]

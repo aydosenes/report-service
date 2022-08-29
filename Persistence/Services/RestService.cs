@@ -12,7 +12,27 @@ namespace Persistence.Services
 {
     public class RestService : IRestService
     {
-        static readonly string baseUrl = "http://test.twalletgate.com/";
+        static readonly string baseUrl = "http://localhost:5000/";
+
+        public async Task<HttpResponseMessage> Get(string url)
+        {
+            try
+            {
+                ServicePointManager.ServerCertificateValidationCallback += (se, cert, chain, sslerror) => { return true; };
+
+                using (var client = new HttpClient())
+                {
+                    return  await client.GetAsync(url);
+                }
+            }
+            catch (Exception ex)
+            {
+
+                var _ex = ex.Message;
+                return null;
+            }
+
+        }
         public async Task<string> Get(string url, string token)
         {
             try
