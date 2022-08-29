@@ -1,8 +1,6 @@
 ﻿using Application.Dtos;
 using MassTransit;
-using System;
 using MediatR;
-using System.Text;
 using System.Threading.Tasks;
 using System.Linq;
 using System.Collections.Generic;

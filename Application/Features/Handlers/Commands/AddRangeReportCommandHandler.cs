@@ -6,6 +6,7 @@ using AutoMapper;
 using Domain.Entities;
 using GemBox.Spreadsheet;
 using MediatR;
+using OfficeOpenXml;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -15,7 +16,7 @@ using System.Threading.Tasks;
 
 namespace Application.Features.Handlers.Commands
 {
-    public class AddRangeReportCommandHandler : IRequestHandler<AddRangeReportCommand, IDataResult<ICollection<ReportDto>>>
+    public class AddRangeReportCommandHandler : IRequestHandler<AddRangeReportCommand, IDataResult<List<ReportDto>>>
     {
         private readonly IReportRepository _reportRepository;
         private readonly IMapper _mapper;
@@ -24,7 +25,7 @@ namespace Application.Features.Handlers.Commands
             _reportRepository = reportRepository;
             _mapper = mapper;
         }
-        public async Task<IDataResult<ICollection<ReportDto>>> Handle(AddRangeReportCommand request, CancellationToken cancellationToken)
+        public async Task<IDataResult<List<ReportDto>>> Handle(AddRangeReportCommand request, CancellationToken cancellationToken)
         {
             try
             {
@@ -32,7 +33,7 @@ namespace Application.Features.Handlers.Commands
                 var result = await _reportRepository.AddRangeAsync(mapped);
                 var reports = _mapper.Map<List<ReportDto>>(result);
                 var distinct = reports.GroupBy(g => g.Location).Select(s => s.Last()).ToList();
-
+                /*
                 SpreadsheetInfo.SetLicense("FREE-LIMITED-KEY");
                 ExcelFile workbook = new ExcelFile();
                 ExcelWorksheet worksheet = workbook.Worksheets.Add("Users");
@@ -49,14 +50,18 @@ namespace Application.Features.Handlers.Commands
                     worksheet.Cells[row, 2].Value = report.PhoneCount;
                     worksheet.Cells[row, 3].Value = report.State;
                 }
-                workbook.Save(Directory.GetCurrentDirectory() + "report-results-" + Guid.NewGuid().ToString() + ".xlsx");
+                var uuid = Guid.NewGuid().ToString();
+                var path = Directory.GetCurrentDirectory() + "report-results-" + uuid + ".xlsx";
+                workbook.Save(path);
+                */
+                
 
-                return new SuccessDataResult<ICollection<ReportDto>>(distinct, Messages.Success_Added);
+                return new SuccessDataResult<List<ReportDto>>(distinct, Messages.Success_Added);
 
             }
             catch (Exception ex)
             {
-                return new ErrorDataResult<ICollection<ReportDto>>(ex.Message);
+                return new ErrorDataResult<List<ReportDto>>(ex.Message);
             }
         }
     }

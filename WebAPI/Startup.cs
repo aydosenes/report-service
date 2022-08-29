@@ -1,5 +1,8 @@
+using Application.Dtos;
+using Application.Features.Request.Commands;
 using Application.Mapping;
 using Application.Middlewares;
+using Domain.Common;
 using MassTransit;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
@@ -10,7 +13,13 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Microsoft.OpenApi.Models;
 using Persistence.Consumers;
+using RabbitMQ.Client;
 using System;
+using System.Linq;
+using System.Net;
+using System.Net.Security;
+using System.Security.Authentication;
+using System.Security.Cryptography.X509Certificates;
 
 namespace WebAPI
 {
@@ -20,48 +29,19 @@ namespace WebAPI
         {
             Configuration = configuration;
         }
-
+        public static AppConfig AppConfig { get; set; }
         public IConfiguration Configuration { get; }
 
         public void ConfigureServices(IServiceCollection services)
         {
+            services.Configure<AppConfig>(Configuration.GetSection("AppConfig"));
             services.AddMassTransit(x =>
             {
                 x.AddConsumer<ContactMessageConsumer>();
-                x.UsingRabbitMq((context, config) =>
-                {
-                    config.Host(Configuration["RabbitMQUrl"], "/", host => {
-                        host.Username("guest");
-                        host.Password("guest");
-                    });
-
-                    config.ReceiveEndpoint("queue:report-service", e => {
-                        e.ConfigureConsumer<ContactMessageConsumer>(context);
-                    });
-                });
+                x.AddBus(ConfigureBus);                
+                x.AddRequestClient<AddRangeReportDto>();
             });
-
-            services.AddOptions<MassTransitHostOptions>()
-                .Configure(options =>
-                {
-                    // if specified, waits until the bus is started before
-                    // returning from IHostedService.StartAsync
-                    // default is false
-                    options.WaitUntilStarted = true;
-
-                    // if specified, limits the wait time when starting the bus
-                    options.StartTimeout = TimeSpan.FromSeconds(10);
-
-                    // if specified, limits the wait time when stopping the bus
-                    options.StopTimeout = TimeSpan.FromSeconds(30);
-                });
-
-            //services.Configure<MassTransitHostOptions>(options =>
-            //{
-            //    options.WaitUntilStarted = true;
-            //    options.StartTimeout = TimeSpan.FromSeconds(30);
-            //    options.StopTimeout = TimeSpan.FromMinutes(1);
-            //});
+            services.AddHostedService<MessageBusMiddleware>();
 
             services.AddAutoMapper(typeof(BaseMapper));
             services.AddMediatR(AppDomain.CurrentDomain.GetAssemblies());
@@ -91,8 +71,68 @@ namespace WebAPI
 
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapControllers();
+                endpoints.MapControllers();                
             });
+        }
+
+        static IBusControl ConfigureBus(IServiceProvider provider)
+        {
+            AppConfig = provider.GetRequiredService<IOptions<AppConfig>>().Value;
+
+            X509Certificate2 x509Certificate2 = null;
+
+            X509Store store = new X509Store(StoreName.My, StoreLocation.LocalMachine);
+            store.Open(OpenFlags.ReadOnly);
+
+            try
+            {
+                X509Certificate2Collection certificatesInStore = store.Certificates;
+
+                x509Certificate2 = certificatesInStore.OfType<X509Certificate2>()
+                    .FirstOrDefault(cert => cert.Thumbprint?.ToLower() == AppConfig.SSLThumbprint?.ToLower());
+            }
+            finally
+            {
+                store.Close();
+            }
+
+            var result =  Bus.Factory.CreateUsingRabbitMq(cfg =>
+            {
+                cfg.Host(AppConfig.Host, AppConfig.VirtualHost, h =>
+                {
+                    h.Username(AppConfig.Username);
+                    h.Password(AppConfig.Password);
+
+                    if (AppConfig.SSLActive)
+                    {
+                        h.UseSsl(ssl =>
+                        {
+                            ssl.ServerName = Dns.GetHostName();
+                            ssl.AllowPolicyErrors(SslPolicyErrors.RemoteCertificateNameMismatch);
+                            ssl.Certificate = x509Certificate2;
+                            ssl.Protocol = SslProtocols.Tls12;
+                            ssl.CertificateSelectionCallback = CertificateSelectionCallback;
+                        });
+                    }
+                });
+                cfg.ReceiveEndpoint("report-service", ep =>
+                {
+                    ep.PrefetchCount = 16;
+                    ep.UseMessageRetry(r => r.Interval(2, 100));
+                    ep.ConfigureConsumer<ContactMessageConsumer>((IBusRegistrationContext)provider);
+                });
+                cfg.ConfigureEndpoints((IBusRegistrationContext)provider);
+                cfg.ExchangeType = ExchangeType.Direct;
+            });
+            return result;
+        }
+
+        private static X509Certificate CertificateSelectionCallback(object sender, string targethost, X509CertificateCollection localcertificates, X509Certificate remotecertificate, string[] acceptableissuers)
+        {
+            var serverCertificate = localcertificates.OfType<X509Certificate2>()
+                                    .FirstOrDefault(cert => cert.Thumbprint.ToLower() == AppConfig.SSLThumbprint.ToLower());
+
+            return serverCertificate ?? throw new Exception("Wrong certificate");
         }
     }
 }

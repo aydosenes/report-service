@@ -2,8 +2,10 @@
 using Application.Features.Request.Commands;
 using Application.Features.Request.Queries;
 using Application.Results;
+using MassTransit;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -14,9 +16,11 @@ namespace WebAPI.Controllers
     public class ReportController : ControllerBase
     {
         private readonly IMediator _mediator;
-        public ReportController(IMediator mediator)
+        private readonly IRequestClient<AddRangeReportDto> _client;
+        public ReportController(IMediator mediator, IRequestClient<AddRangeReportDto> client)
         {
             _mediator = mediator;
+            _client = client;
         }
 
         [HttpGet("get-report")]
@@ -25,23 +29,23 @@ namespace WebAPI.Controllers
         {
             var result = await _mediator.Send(new GetReportQuery() { GetContactListWithContactDetailListQuery = new GetContactListWithContactDetailListQuery() });
             if (result.Success)
-                return Ok(result.Message);
+            {
+                string fileName = $"report-results-{DateTime.Now:yyyyMMddHHmmss}.xlsx";
+                return File(result.Data, "application/octet-stream", fileName);
+            }
             return BadRequest(result.Message);
 
         }
-
-
-        [HttpGet("{id}")]
-        [ProducesResponseType(200, Type = typeof(IDataResult<ReportDto>))]
-        public async Task<IActionResult> GetReportById(string id)
+        
+        [HttpPost("add-range-report")]
+        [ProducesResponseType(200, Type = typeof(BaseResult))]
+        public async Task<IActionResult> AddRangeReport([FromBody] AddRangeReportCommand request)
         {
-            var result = await _mediator.Send(new GetReportByIdQuery() { Id = id });
+            var result = await _mediator.Send(request);
             if (result.Success)
                 return Ok(result.Data);
             return BadRequest(result.Message);
-
         }
-
         [HttpGet("report-list")]
         [ProducesResponseType(200, Type = typeof(IDataResult<List<ReportDto>>))]
         public async Task<IActionResult> GetReportList()
@@ -53,6 +57,19 @@ namespace WebAPI.Controllers
 
         }
 
+        #region other endpoints
+        [HttpGet("{id}")]
+        [ProducesResponseType(200, Type = typeof(IDataResult<ReportDto>))]
+        public async Task<IActionResult> GetReportById(string id)
+        {
+            var result = await _mediator.Send(new GetReportByIdQuery() { Id = id });
+            if (result.Success)
+                return Ok(result.Data);
+            return BadRequest(result.Message);
+
+        }
+
+
         [HttpPost("add-report")]
         [ProducesResponseType(200, Type = typeof(BaseResult))]
         public async Task<IActionResult> AddReport([FromBody] AddReportCommand request)
@@ -63,15 +80,7 @@ namespace WebAPI.Controllers
             return BadRequest(result.Message);
         }
 
-        [HttpPost("add-range-report")]
-        [ProducesResponseType(200, Type = typeof(BaseResult))]
-        public async Task<IActionResult> AddRangeReport([FromBody] AddRangeReportCommand request)
-        {
-            var result = await _mediator.Send(request);
-            if (result.Success)
-                return Ok(result);
-            return BadRequest(result.Message);
-        }
+        
 
         [HttpPut("update-report")]
         [ProducesResponseType(200, Type = typeof(BaseResult))]
@@ -93,5 +102,6 @@ namespace WebAPI.Controllers
                 return Ok(result);
             return BadRequest(result.Message);
         }
+        #endregion
     }
 }
